@@ -120,6 +120,9 @@
           </a>
           (offene Lizenz)
         </p>
+        <p class="detail-line detail-line-muted" id="basemapNote">
+          Basemap: Stadia Maps Stamen Toner
+        </p>
       </section>
     </main>
 
@@ -132,6 +135,11 @@
     ></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="./data/koeln_kirschbaumkataster.js"></script>
+    <script>
+      window.APP_CONFIG = window.APP_CONFIG || {
+        stadiaMapsApiKey: "",
+      };
+    </script>
     <script src="./app.js" defer></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+const APP_CONFIG = window.APP_CONFIG || {};
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
@@ -13,6 +14,7 @@ const elements = {
   resetButton: document.getElementById("resetButton"),
   focusButton: document.getElementById("focusButton"),
   loadingBadge: document.getElementById("loadingBadge"),
+  basemapNote: document.getElementById("basemapNote"),
 };
 
 const appState = {
@@ -58,14 +60,7 @@ function setupMap() {
   L.control.zoom({ position: "bottomright" }).addTo(map);
   map.attributionControl.setPrefix(false);
 
-  L.tileLayer("https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png", {
-    maxZoom: 20,
-    attribution:
-      '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
-      '&copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> ' +
-      '&copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' +
-      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-  }).addTo(map);
+  createBaseLayer(map);
 
   const clusterLayer = L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -78,6 +73,51 @@ function setupMap() {
 
   appState.map = map;
   appState.clusterLayer = clusterLayer;
+}
+
+function createBaseLayer(map) {
+  const stadiaApiKey = String(APP_CONFIG.stadiaMapsApiKey || "").trim();
+  const stadiaUrlBase = "https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png";
+  const stadiaUrl = stadiaApiKey
+    ? `${stadiaUrlBase}?api_key=${encodeURIComponent(stadiaApiKey)}`
+    : stadiaUrlBase;
+  const stadiaAttribution =
+    '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
+    '&copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> ' +
+    '&copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' +
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+  const osmAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
+  const stadiaLayer = L.tileLayer(stadiaUrl, {
+    maxZoom: 20,
+    attribution: stadiaAttribution,
+  });
+  const fallbackLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    className: "basemap-grayscale",
+    attribution: osmAttribution,
+  });
+
+  let fallbackActivated = false;
+
+  stadiaLayer.on("tileerror", () => {
+    if (fallbackActivated) {
+      return;
+    }
+
+    fallbackActivated = true;
+    if (map.hasLayer(stadiaLayer)) {
+      map.removeLayer(stadiaLayer);
+    }
+    fallbackLayer.addTo(map);
+    elements.basemapNote.textContent =
+      "Basemap-Fallback aktiv: OSM in Graustufen. Fuer Stadia Stamen Toner im Live-Betrieb brauchst du Domain-Auth oder einen API-Key.";
+  });
+
+  stadiaLayer.addTo(map);
+  elements.basemapNote.textContent = stadiaApiKey
+    ? "Basemap: Stadia Maps Stamen Toner ueber API-Key."
+    : "Basemap: Stadia Maps Stamen Toner. Ohne Domain-Auth oder API-Key faellt die Karte automatisch auf OSM-Graustufen zurueck.";
 }
 
 function bindEvents() {
