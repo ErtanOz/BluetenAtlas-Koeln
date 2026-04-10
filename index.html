@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Koelner Kirschbaum-Atlas</title>
+    <meta
+      name="description"
+      content="Interaktive Karte der Prunus-Baeume in Koeln mit blossom Icons, Filtern und Detail-Popups."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="map" aria-label="Interaktive Karte der Koelner Kirschbaeume"></div>
+
+    <main class="ui-shell">
+      <section class="panel hero-panel">
+        <p class="eyebrow">Koeln / Prunus-Atlas</p>
+        <h1>Kirschbaeume, Viertel fuer Viertel.</h1>
+        <p class="hero-copy">
+          Filtere die Kirschbaeume der Stadt, zoome hinein und pruefe die wichtigsten Messwerte
+          direkt im Popup.
+        </p>
+
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span class="metric-label">Gesamt</span>
+            <strong id="totalTrees">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Sichtbar</span>
+            <strong id="visibleTrees">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Stadtteile</span>
+            <strong id="districtCount">-</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel controls-panel">
+        <div class="field-block">
+          <label for="districtSelect">Stadtteilfilter</label>
+          <select id="districtSelect">
+            <option value="">Ganz Koeln</option>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label for="searchInput">Suche</label>
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Strasse, botanischer Name, Baumnummer..."
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="button-row">
+          <button id="resetButton" class="button button-primary" type="button">Zuruecksetzen</button>
+          <button id="focusButton" class="button button-secondary" type="button">
+            Treffer fokussieren
+          </button>
+        </div>
+      </section>
+
+      <section class="panel info-panel">
+        <div class="status-line">
+          <span class="status-dot"></span>
+          <p id="statusText">Daten werden geladen...</p>
+        </div>
+        <p class="detail-line">
+          Fokus:
+          <strong id="focusLabel">Ganz Koeln</strong>
+        </p>
+        <p class="detail-line detail-line-muted">
+          Quelldaten: <code>data/koeln_baumkataster.geojson</code>
+        </p>
+      </section>
+    </main>
+
+    <div id="loadingBadge" class="loading-badge is-visible">Karte wird geladen...</div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="./data/koeln_kirschbaumkataster.js"></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
