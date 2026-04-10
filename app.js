@@ -2,6 +2,18 @@ const APP_CONFIG = window.APP_CONFIG || {};
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+const STADIA_PROBE_TILE = { z: 11, x: 1064, y: 685 };
+const BASEMAP_MESSAGES = {
+  checking: "Basemap-Pruefung: Stadia Maps Stamen Toner wird verifiziert.",
+  active: "Basemap aktiv: Stadia Maps Stamen Toner.",
+  activeWithKey: "Basemap aktiv: Stadia Maps Stamen Toner ueber API-Key.",
+  needsDomainAuth:
+    "Stadia Maps Stamen Toner braucht Domain-Auth auf diesem Host. OSM in Graustufen ist aktiv.",
+  unavailableFallback:
+    "Stadia Maps Stamen Toner ist derzeit nicht verfuegbar. OSM in Graustufen ist aktiv.",
+  runtimeFallback:
+    "Stadia Maps Stamen Toner ist waehrend der Laufzeit ausgefallen. OSM in Graustufen ist aktiv.",
+};
 
 const elements = {
   totalTrees: document.getElementById("totalTrees"),
@@ -33,10 +45,8 @@ const blossomMarkerIcon = L.divIcon({
   popupAnchor: [0, -14],
 });
 
-bootstrap();
-
-function bootstrap() {
-  setupMap();
+async function bootstrap() {
+  await setupMap();
   bindEvents();
 
   if (!DATA_PAYLOAD || !Array.isArray(DATA_PAYLOAD.records)) {
@@ -50,7 +60,12 @@ function bootstrap() {
   setLoading(false);
 }
 
-function setupMap() {
+bootstrap().catch((error) => {
+  console.error(error);
+  showError("Die Karte konnte nicht initialisiert werden.");
+});
+
+async function setupMap() {
   const map = L.map("map", {
     preferCanvas: true,
     zoomControl: false,
@@ -60,7 +75,7 @@ function setupMap() {
   L.control.zoom({ position: "bottomright" }).addTo(map);
   map.attributionControl.setPrefix(false);
 
-  createBaseLayer(map);
+  await createBaseLayer(map);
 
   const clusterLayer = L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -75,12 +90,8 @@ function setupMap() {
   appState.clusterLayer = clusterLayer;
 }
 
-function createBaseLayer(map) {
+async function createBaseLayer(map) {
   const stadiaApiKey = String(APP_CONFIG.stadiaMapsApiKey || "").trim();
-  const stadiaUrlBase = "https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png";
-  const stadiaUrl = stadiaApiKey
-    ? `${stadiaUrlBase}?api_key=${encodeURIComponent(stadiaApiKey)}`
-    : stadiaUrlBase;
   const stadiaAttribution =
     '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
     '&copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> ' +
@@ -88,7 +99,7 @@ function createBaseLayer(map) {
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
-  const stadiaLayer = L.tileLayer(stadiaUrl, {
+  const stadiaLayer = L.tileLayer(buildStadiaTileUrl(stadiaApiKey), {
     maxZoom: 20,
     attribution: stadiaAttribution,
   });
@@ -98,26 +109,97 @@ function createBaseLayer(map) {
     attribution: osmAttribution,
   });
 
+  let activeLayer = null;
   let fallbackActivated = false;
+  elements.basemapNote.textContent = BASEMAP_MESSAGES.checking;
 
-  stadiaLayer.on("tileerror", () => {
+  const activateFallback = (message) => {
     if (fallbackActivated) {
       return;
     }
 
     fallbackActivated = true;
-    if (map.hasLayer(stadiaLayer)) {
-      map.removeLayer(stadiaLayer);
+    if (activeLayer && map.hasLayer(activeLayer)) {
+      map.removeLayer(activeLayer);
     }
-    fallbackLayer.addTo(map);
-    elements.basemapNote.textContent =
-      "Basemap-Fallback aktiv: OSM in Graustufen. Fuer Stadia Stamen Toner im Live-Betrieb brauchst du Domain-Auth oder einen API-Key.";
+    if (!map.hasLayer(fallbackLayer)) {
+      fallbackLayer.addTo(map);
+    }
+    activeLayer = fallbackLayer;
+    elements.basemapNote.textContent = message;
+  };
+
+  const activateStadia = () => {
+    if (!map.hasLayer(stadiaLayer)) {
+      stadiaLayer.addTo(map);
+    }
+    activeLayer = stadiaLayer;
+    elements.basemapNote.textContent = stadiaApiKey
+      ? BASEMAP_MESSAGES.activeWithKey
+      : BASEMAP_MESSAGES.active;
+  };
+
+  stadiaLayer.on("tileerror", () => {
+    activateFallback(BASEMAP_MESSAGES.runtimeFallback);
   });
 
-  stadiaLayer.addTo(map);
-  elements.basemapNote.textContent = stadiaApiKey
-    ? "Basemap: Stadia Maps Stamen Toner ueber API-Key."
-    : "Basemap: Stadia Maps Stamen Toner. Ohne Domain-Auth oder API-Key faellt die Karte automatisch auf OSM-Graustufen zurueck.";
+  const probeResult = await probeStadiaAvailability(stadiaApiKey);
+  if (probeResult.ok) {
+    activateStadia();
+    return;
+  }
+
+  if (probeResult.reason === "auth" && !stadiaApiKey) {
+    activateFallback(BASEMAP_MESSAGES.needsDomainAuth);
+    return;
+  }
+
+  activateFallback(BASEMAP_MESSAGES.unavailableFallback);
+}
+
+async function probeStadiaAvailability(stadiaApiKey) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+  const probeUrl = buildStadiaTileUrl(
+    stadiaApiKey,
+    STADIA_PROBE_TILE.z,
+    STADIA_PROBE_TILE.x,
+    STADIA_PROBE_TILE.y,
+    ""
+  );
+
+  try {
+    const response = await fetch(probeUrl, {
+      method: "HEAD",
+      mode: "cors",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (response.ok) {
+      return { ok: true, status: response.status };
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, reason: "auth", status: response.status };
+    }
+
+    return { ok: false, reason: "http", status: response.status };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return { ok: false, reason: "network", error: "timeout" };
+    }
+
+    return { ok: false, reason: "network", error: String(error) };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function buildStadiaTileUrl(stadiaApiKey, z = "{z}", x = "{x}", y = "{y}", retina = "{r}") {
+  const suffix = retina ? `${retina}.png` : ".png";
+  const baseUrl = `https://tiles.stadiamaps.com/tiles/stamen_toner/${z}/${x}/${y}${suffix}`;
+  return stadiaApiKey ? `${baseUrl}?api_key=${encodeURIComponent(stadiaApiKey)}` : baseUrl;
 }
 
 function bindEvents() {
