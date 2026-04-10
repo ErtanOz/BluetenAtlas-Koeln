@@ -7,6 +7,8 @@ const BASEMAP_MESSAGES = {
   checking: "Basemap-Pruefung: Stadia Maps Stamen Toner wird verifiziert.",
   active: "Basemap aktiv: Stadia Maps Stamen Toner.",
   activeWithKey: "Basemap aktiv: Stadia Maps Stamen Toner ueber API-Key.",
+  hostNotAuthorized:
+    "Stadia Maps Stamen Toner ist auf diesem Host deaktiviert. OSM in Graustufen ist aktiv, bis Domain-Auth fuer diesen Host freigeschaltet ist.",
   needsDomainAuth:
     "Stadia Maps Stamen Toner braucht Domain-Auth auf diesem Host. OSM in Graustufen ist aktiv.",
   unavailableFallback:
@@ -92,6 +94,11 @@ async function setupMap() {
 
 async function createBaseLayer(map) {
   const stadiaApiKey = String(APP_CONFIG.stadiaMapsApiKey || "").trim();
+  const authorizedHosts = Array.isArray(APP_CONFIG.stadiaAuthorizedHosts)
+    ? APP_CONFIG.stadiaAuthorizedHosts.map((host) => String(host || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  const currentHost = window.location.hostname.toLowerCase();
+  const shouldAttemptStadia = Boolean(stadiaApiKey) || authorizedHosts.includes(currentHost);
   const stadiaAttribution =
     '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
     '&copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> ' +
@@ -111,7 +118,9 @@ async function createBaseLayer(map) {
 
   let activeLayer = null;
   let fallbackActivated = false;
-  elements.basemapNote.textContent = BASEMAP_MESSAGES.checking;
+  elements.basemapNote.textContent = shouldAttemptStadia
+    ? BASEMAP_MESSAGES.checking
+    : BASEMAP_MESSAGES.hostNotAuthorized;
 
   const activateFallback = (message) => {
     if (fallbackActivated) {
@@ -142,6 +151,11 @@ async function createBaseLayer(map) {
   stadiaLayer.on("tileerror", () => {
     activateFallback(BASEMAP_MESSAGES.runtimeFallback);
   });
+
+  if (!shouldAttemptStadia) {
+    activateFallback(BASEMAP_MESSAGES.hostNotAuthorized);
+    return;
+  }
 
   const probeResult = await probeStadiaAvailability(stadiaApiKey);
   if (probeResult.ok) {
