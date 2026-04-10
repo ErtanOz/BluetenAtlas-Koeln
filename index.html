@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Koelner Kirschbaum-Atlas</title>
+    <title>Bl&uuml;tenAtlas K&ouml;ln</title>
     <meta
       name="description"
-      content="Interaktive Karte der Prunus-Baeume in Koeln mit blossom Icons, Filtern und Detail-Popups."
+      content="Bl&uuml;tenAtlas K&ouml;ln: Interaktive Karte der Prunus-Baeume in Koeln mit Filtern, Clustern und offener GovData-Quelle."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,15 +31,22 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="map" aria-label="Interaktive Karte der Koelner Kirschbaeume"></div>
+    <div id="map" aria-label="Interaktive Karte von Bl&uuml;tenAtlas K&ouml;ln"></div>
 
     <main class="ui-shell">
       <section class="panel hero-panel">
-        <p class="eyebrow">Koeln / Prunus-Atlas</p>
+        <p class="eyebrow">Bl&uuml;tenAtlas K&ouml;ln</p>
         <h1>Kirschbaeume, Viertel fuer Viertel.</h1>
         <p class="hero-copy">
           Filtere die Kirschbaeume der Stadt, zoome hinein und pruefe die wichtigsten Messwerte
           direkt im Popup.
+        </p>
+        <p class="detail-line detail-line-muted">
+          Powered by
+          <a href="https://digitalheritagelab.com" target="_blank" rel="noreferrer">
+            digitalheritagelab.com
+          </a>
+          / Ertan &Ouml;zcan
         </p>
 
         <div class="metric-grid">
@@ -95,6 +102,23 @@
         </p>
         <p class="detail-line detail-line-muted">
           Quelldaten: <code>data/koeln_baumkataster.geojson</code>
+        </p>
+        <p class="detail-line detail-line-muted">
+          Datenquelle:
+          <a
+            href="https://www.govdata.de/suche/daten/baumkataster-stadt-koln"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GovData / Baumkataster - Stadt K&ouml;ln
+          </a>
+        </p>
+        <p class="detail-line detail-line-muted">
+          Lizenz:
+          <a href="https://www.govdata.de/dl-de/zero-2-0" target="_blank" rel="noreferrer">
+            Datenlizenz Deutschland - Zero - Version 2.0
+          </a>
+          (offene Lizenz)
         </p>
       </section>
     </main>

@@ -227,6 +227,7 @@ body::before {
 .detail-line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin: 0;
 }
@@ -256,6 +257,16 @@ body::before {
 .detail-line-muted {
   margin-top: 12px;
   font-size: 0.82rem;
+}
+
+.detail-line-muted a {
+  color: var(--rose-4);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detail-line-muted a:hover {
+  text-decoration: underline;
 }
 
 .detail-line-muted code {
