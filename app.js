@@ -2,13 +2,13 @@ const APP_CONFIG = window.APP_CONFIG || {};
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+const STADIA_STYLE_ID = "stamen_toner";
+const STADIA_PRODUCTION_HOST = "ertanoz.github.io";
 const STADIA_PROBE_TILE = { z: 11, x: 1064, y: 685 };
 const BASEMAP_MESSAGES = {
   checking: "Basemap-Pruefung: Stadia Maps Stamen Toner wird verifiziert.",
   active: "Basemap aktiv: Stadia Maps Stamen Toner.",
   activeWithKey: "Basemap aktiv: Stadia Maps Stamen Toner ueber API-Key.",
-  hostNotAuthorized:
-    "Stadia Maps Stamen Toner ist auf diesem Host deaktiviert. OSM in Graustufen ist aktiv, bis Domain-Auth fuer diesen Host freigeschaltet ist.",
   needsDomainAuth:
     "Stadia Maps Stamen Toner braucht Domain-Auth auf diesem Host. OSM in Graustufen ist aktiv.",
   unavailableFallback:
@@ -120,7 +120,7 @@ async function createBaseLayer(map) {
   let fallbackActivated = false;
   elements.basemapNote.textContent = shouldAttemptStadia
     ? BASEMAP_MESSAGES.checking
-    : BASEMAP_MESSAGES.hostNotAuthorized;
+    : getHostNotAuthorizedMessage(currentHost);
 
   const activateFallback = (message) => {
     if (fallbackActivated) {
@@ -153,7 +153,7 @@ async function createBaseLayer(map) {
   });
 
   if (!shouldAttemptStadia) {
-    activateFallback(BASEMAP_MESSAGES.hostNotAuthorized);
+    activateFallback(getHostNotAuthorizedMessage(currentHost));
     return;
   }
 
@@ -212,8 +212,16 @@ async function probeStadiaAvailability(stadiaApiKey) {
 
 function buildStadiaTileUrl(stadiaApiKey, z = "{z}", x = "{x}", y = "{y}", retina = "{r}") {
   const suffix = retina ? `${retina}.png` : ".png";
-  const baseUrl = `https://tiles.stadiamaps.com/tiles/stamen_toner/${z}/${x}/${y}${suffix}`;
+  const baseUrl = `https://tiles.stadiamaps.com/tiles/${STADIA_STYLE_ID}/${z}/${x}/${y}${suffix}`;
   return stadiaApiKey ? `${baseUrl}?api_key=${encodeURIComponent(stadiaApiKey)}` : baseUrl;
+}
+
+function getHostNotAuthorizedMessage(currentHost) {
+  if (currentHost === STADIA_PRODUCTION_HOST) {
+    return `Stadia Maps Stamen Toner ist fuer ${STADIA_PRODUCTION_HOST} noch nicht freigeschaltet. OSM in Graustufen ist aktiv, bis die Domain-Auth eingerichtet ist.`;
+  }
+
+  return "Stadia Maps Stamen Toner ist auf diesem Host deaktiviert. OSM in Graustufen ist aktiv, bis Domain-Auth fuer diesen Host freigeschaltet ist.";
 }
 
 function bindEvents() {
