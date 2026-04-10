@@ -306,6 +306,10 @@ body::before {
   font: inherit;
 }
 
+.leaflet-tile.basemap-grayscale {
+  filter: grayscale(1) brightness(1.05) contrast(0.92) saturate(0.7);
+}
+
 .leaflet-control-zoom {
   border: 0;
   box-shadow: var(--shadow);
