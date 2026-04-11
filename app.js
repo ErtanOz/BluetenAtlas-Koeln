@@ -13,6 +13,11 @@ const elements = {
   mobileSheetContent: document.getElementById("mobileSheetContent"),
   mobileSheetToggle: document.getElementById("mobileSheetToggle"),
   mobileSheetToggleLabel: document.getElementById("mobileSheetToggleLabel"),
+  mobileInfoButton: document.getElementById("mobileInfoButton"),
+  mobileInfoModal: document.getElementById("mobileInfoModal"),
+  mobileInfoBackdrop: document.getElementById("mobileInfoBackdrop"),
+  mobileInfoClose: document.getElementById("mobileInfoClose"),
+  mobileInfoBasemapNote: document.getElementById("mobileInfoBasemapNote"),
   totalTrees: document.getElementById("totalTrees"),
   visibleTrees: document.getElementById("visibleTrees"),
   districtCount: document.getElementById("districtCount"),
@@ -37,6 +42,7 @@ const appState = {
   activeBasemapKey: "gray",
   basemapControl: null,
   mobileSheetState: "open",
+  mobileInfoOpen: false,
 };
 
 const blossomMarkerIcon = L.divIcon({
@@ -168,11 +174,14 @@ function createBaseLayer(map) {
 
 function updateBasemapNote(key) {
   const label = BASEMAP_LABELS[key] || BASEMAP_LABELS.gray;
-  elements.basemapNote.textContent = `Basemap aktiv: ${label}.`;
+  const message = `Basemap aktiv: ${label}.`;
+  elements.basemapNote.textContent = message;
+  elements.mobileInfoBasemapNote.textContent = message;
 }
 
 function bindEvents() {
   bindMobileSheet();
+  bindMobileInfoModal();
 
   elements.districtSelect.addEventListener("change", () => {
     applyFilters({ refit: true });
@@ -204,6 +213,11 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && appState.mobileInfoOpen) {
+      closeMobileInfoModal();
+      return;
+    }
+
     if (e.key === "Escape" && elements.searchInput.value) {
       elements.searchInput.value = "";
       updateSearchClear();
@@ -226,7 +240,13 @@ function bindMobileSheet() {
   });
 
   MOBILE_LAYOUT_QUERY.addEventListener("change", () => {
+    if (!isMobileLayout()) {
+      appState.mobileSheetState = "open";
+      appState.mobileInfoOpen = false;
+    }
+
     syncMobileSheet();
+    syncMobileInfoModal();
     refreshMapLayout();
   });
 }
@@ -242,6 +262,44 @@ function syncMobileSheet() {
   elements.mobileSheetToggle.setAttribute("aria-label", toggleLabel);
   elements.mobileSheetToggleLabel.textContent = toggleLabel;
   elements.mobileSheetContent.setAttribute("aria-hidden", String(mobile && !expanded));
+}
+
+function bindMobileInfoModal() {
+  syncMobileInfoModal();
+
+  elements.mobileInfoButton.addEventListener("click", () => {
+    if (!isMobileLayout()) {
+      return;
+    }
+
+    appState.mobileInfoOpen = true;
+    syncMobileInfoModal();
+  });
+
+  elements.mobileInfoClose.addEventListener("click", () => {
+    closeMobileInfoModal();
+  });
+
+  elements.mobileInfoBackdrop.addEventListener("click", () => {
+    closeMobileInfoModal();
+  });
+}
+
+function closeMobileInfoModal() {
+  if (!appState.mobileInfoOpen) {
+    return;
+  }
+
+  appState.mobileInfoOpen = false;
+  syncMobileInfoModal();
+}
+
+function syncMobileInfoModal() {
+  const visible = isMobileLayout() && appState.mobileInfoOpen;
+
+  elements.mobileInfoButton.setAttribute("aria-expanded", String(visible));
+  elements.mobileInfoModal.hidden = !visible;
+  document.body.classList.toggle("mobile-info-open", visible);
 }
 
 function isMobileLayout() {
@@ -395,8 +453,8 @@ function getMapPadding() {
   if (isMobile) {
     const panelH =
       appState.mobileSheetState === "hidden"
-        ? 84
-        : Math.min(window.innerHeight * 0.34, 320) + 68;
+        ? 72
+        : Math.min(window.innerHeight * 0.36, 260) + 64;
     return {
       paddingTopLeft: [16, 16],
       paddingBottomRight: [16, panelH],
