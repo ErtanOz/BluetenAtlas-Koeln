@@ -37,6 +37,12 @@ Danach `http://127.0.0.1:8000` im Browser öffnen.
 
 Die Kartenkacheln werden online geladen, daher ist eine Internetverbindung erforderlich.
 
+### Datenquelle
+
+- Quelle: [GovData / Baumkataster - Stadt Köln](https://www.govdata.de/suche/daten/baumkataster-stadt-koln)
+- Lokale Datei: `data/koeln_baumkataster.geojson`
+- Lizenz: [Datenlizenz Deutschland - Zero - Version 2.0](https://www.govdata.de/dl-de/zero-2-0)
+
 ## English
 
 BlütenAtlas Köln is a lightweight web app that shows cherry trees in Cologne on an interactive map.
@@ -73,3 +79,9 @@ Then open `http://127.0.0.1:8000` in your browser.
 ### Note
 
 Map tiles are loaded online, so an internet connection is required.
+
+### Data Source
+
+- Source: [GovData / Baumkataster - Stadt Köln](https://www.govdata.de/suche/daten/baumkataster-stadt-koln)
+- Local file: `data/koeln_baumkataster.geojson`
+- License: [Data License Germany - Zero - Version 2.0](https://www.govdata.de/dl-de/zero-2-0)
