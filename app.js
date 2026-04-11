@@ -6,6 +6,7 @@ const BASEMAP_LABELS = {
   street: "OSM Straße",
   satellite: "Satellit",
 };
+const MOBILE_LAYOUT_QUERY = window.matchMedia("(max-width: 720px)");
 
 const elements = {
   totalTrees: document.getElementById("totalTrees"),
@@ -20,6 +21,10 @@ const elements = {
   focusButton: document.getElementById("focusButton"),
   loadingBadge: document.getElementById("loadingBadge"),
   basemapNote: document.getElementById("basemapNote"),
+  heroPanel: document.getElementById("heroPanel"),
+  heroToggle: document.getElementById("heroToggle"),
+  heroToggleLabel: document.getElementById("heroToggleLabel"),
+  heroCollapsible: document.getElementById("heroCollapsible"),
 };
 
 const appState = {
@@ -31,6 +36,7 @@ const appState = {
   basemapLayers: {},
   activeBasemapKey: "gray",
   basemapControl: null,
+  heroExpanded: true,
 };
 
 const blossomMarkerIcon = L.divIcon({
@@ -166,6 +172,8 @@ function updateBasemapNote(key) {
 }
 
 function bindEvents() {
+  bindHeroToggle();
+
   elements.districtSelect.addEventListener("change", () => {
     applyFilters({ refit: true });
   });
@@ -202,6 +210,45 @@ function bindEvents() {
       applyFilters({ refit: false });
     }
   });
+}
+
+function bindHeroToggle() {
+  syncHeroPanel();
+
+  elements.heroToggle.addEventListener("click", () => {
+    if (!isMobileLayout()) {
+      return;
+    }
+
+    appState.heroExpanded = !appState.heroExpanded;
+    syncHeroPanel();
+  });
+
+  MOBILE_LAYOUT_QUERY.addEventListener("change", () => {
+    syncHeroPanel();
+  });
+}
+
+function syncHeroPanel() {
+  const mobile = isMobileLayout();
+  const expanded = mobile ? appState.heroExpanded : true;
+  const toggleLabel = expanded ? "Text ausblenden" : "Text anzeigen";
+
+  elements.heroPanel.classList.toggle("is-collapsed", mobile && !expanded);
+  elements.heroPanel.classList.toggle("is-expanded", expanded);
+  elements.heroToggle.setAttribute("aria-expanded", String(expanded));
+  elements.heroToggle.setAttribute("aria-label", toggleLabel);
+  elements.heroToggleLabel.textContent = toggleLabel;
+
+  if (!expanded && mobile) {
+    elements.heroCollapsible.setAttribute("hidden", "");
+  } else {
+    elements.heroCollapsible.removeAttribute("hidden");
+  }
+}
+
+function isMobileLayout() {
+  return MOBILE_LAYOUT_QUERY.matches;
 }
 
 function hydrateRecords(payload) {
@@ -287,7 +334,7 @@ function renderMarkers(records) {
 
 function updateDashboard(records, selectedDistrict, rawQuery) {
   const districtSet = new Set(records.map((record) => record.district).filter(Boolean));
-  const focusLabel = selectedDistrict || (rawQuery ? "Suchergebnis" : "Ganz Koeln");
+  const focusLabel = selectedDistrict || (rawQuery ? "Suchergebnis" : "Ganz Köln");
 
   animateCounter(elements.visibleTrees, records.length);
   animateCounter(elements.districtCount, districtSet.size || DATA_PAYLOAD.districts.length);
@@ -295,13 +342,13 @@ function updateDashboard(records, selectedDistrict, rawQuery) {
   elements.focusButton.disabled = records.length === 0;
 
   if (!records.length) {
-    elements.statusText.textContent = "Keine passenden Kirschbaeume gefunden. Erweitere die Filter.";
+    elements.statusText.textContent = "Keine passenden Kirschbäume gefunden. Erweitere die Filter.";
     return;
   }
 
   const headline = selectedDistrict
-    ? `${selectedDistrict}: ${NUMBER_FORMAT.format(records.length)} Baeume sichtbar.`
-    : `${NUMBER_FORMAT.format(records.length)} Kirschbaeume aktiv.`;
+    ? `${selectedDistrict}: ${NUMBER_FORMAT.format(records.length)} Bäume sichtbar.`
+    : `${NUMBER_FORMAT.format(records.length)} Kirschbäume aktiv.`;
 
   if (rawQuery) {
     elements.statusText.textContent = `${headline} Suche: "${rawQuery}".`;
@@ -370,10 +417,10 @@ function createClusterIcon(cluster) {
 function createPopupMarkup(record) {
   const rows = [
     popupRow("Stadtteil", record.district),
-    popupRow("Strasse", record.street),
+    popupRow("Straße", record.street),
     popupRow("Baumnummer", record.treeNumber),
     popupRow("Pflanzjahr", record.plantedYear),
-    popupRow("Hoehe", formatMetric(record.heightM, "m")),
+    popupRow("Höhe", formatMetric(record.heightM, "m")),
     popupRow("Kronendurchmesser", formatMetric(record.crownDiameterM, "m")),
     popupRow("Stammdurchmesser", formatMetric(record.trunkDiameterCm, "cm")),
     popupRow("Stammumfang", formatMetric(record.trunkCircumferenceCm, "cm")),

@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bl&uuml;tenAtlas K&ouml;ln</title>
+    <title>BlütenAtlas Köln</title>
     <meta
       name="description"
-      content="Bl&uuml;tenAtlas K&ouml;ln: Interaktive Karte der Prunus-B&auml;ume in K&ouml;ln mit Filtern, Clustern und offener GovData-Quelle."
+      content="BlütenAtlas Köln: Interaktive Karte der Prunus-Bäume in Köln mit Filtern, Clustern und offener GovData-Quelle."
     />
     <meta property="og:title" content="BlütenAtlas Köln" />
     <meta property="og:description" content="Interaktive Kirschbaum-Karte der Stadt Köln — 3.787 Bäume visualisiert." />
@@ -35,23 +35,37 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="map" aria-label="Interaktive Karte von Bl&uuml;tenAtlas K&ouml;ln"></div>
+    <div id="map" aria-label="Interaktive Karte von BlütenAtlas Köln"></div>
 
     <main class="ui-shell">
-      <section class="panel hero-panel">
-        <p class="eyebrow">Bl&uuml;tenAtlas K&ouml;ln</p>
-        <h1>Kirschbaeume, Viertel fuer Viertel.</h1>
-        <p class="hero-copy">
-          Filtere die Kirschbaeume der Stadt, zoome hinein und pruefe die wichtigsten Messwerte
-          direkt im Popup.
-        </p>
-        <p class="detail-line detail-line-muted">
-          Powered by
-          <a href="https://digitalheritagelab.com" target="_blank" rel="noreferrer">
-            digitalheritagelab.com
-          </a>
-          / Ertan &Ouml;zcan
-        </p>
+      <section class="panel hero-panel" id="heroPanel">
+        <div class="hero-panel__head">
+          <button
+            id="heroToggle"
+            class="hero-panel__toggle"
+            type="button"
+            aria-expanded="true"
+            aria-controls="heroCollapsible"
+          >
+            <span id="heroToggleLabel">Text ausblenden</span>
+            <span class="hero-panel__toggle-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="hero-panel__collapsible" id="heroCollapsible">
+          <p class="eyebrow">BlütenAtlas Köln</p>
+          <h1>Kirschbäume, Viertel für Viertel.</h1>
+          <p class="hero-copy">
+            Filtere die Kirschbäume der Stadt, zoome hinein und prüfe die wichtigsten Messwerte
+            direkt im Popup.
+          </p>
+          <p class="detail-line detail-line-muted">
+            Powered by
+            <a href="https://digitalheritagelab.com" target="_blank" rel="noreferrer">
+              digitalheritagelab.com
+            </a>
+            / Ertan Özcan
+          </p>
+        </div>
 
         <div class="metric-grid">
           <article class="metric-card">
@@ -73,7 +87,7 @@
         <div class="field-block">
           <label for="districtSelect">Stadtteilfilter</label>
           <select id="districtSelect">
-            <option value="">Ganz Koeln</option>
+            <option value="">Ganz Köln</option>
           </select>
         </div>
 
@@ -97,7 +111,7 @@
         </div>
 
         <div class="button-row">
-          <button id="resetButton" class="button button-secondary" type="button">Zuruecksetzen</button>
+          <button id="resetButton" class="button button-secondary" type="button">Zurücksetzen</button>
           <button id="focusButton" class="button button-primary" type="button" disabled>
             Treffer fokussieren
           </button>
@@ -111,7 +125,7 @@
         </div>
         <p class="detail-line">
           Fokus:
-          <strong id="focusLabel">Ganz Koeln</strong>
+          <strong id="focusLabel">Ganz Köln</strong>
         </p>
         <p class="detail-line detail-line-muted">
           Quelldaten: <code>data/koeln_baumkataster.geojson</code>
@@ -123,7 +137,7 @@
             target="_blank"
             rel="noreferrer"
           >
-            GovData / Baumkataster - Stadt K&ouml;ln
+            GovData / Baumkataster - Stadt Köln
           </a>
         </p>
         <p class="detail-line detail-line-muted">

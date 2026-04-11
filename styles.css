@@ -129,6 +129,19 @@ body::before {
 
 /* ─── Hero Panel ────────────────────────────────────────────── */
 
+.hero-panel__head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero-panel__toggle {
+  display: none;
+}
+
+.hero-panel__collapsible {
+  overflow: visible;
+}
+
 .hero-panel h1 {
   margin: 8px 0 10px;
   font-family: "Fraunces", Georgia, serif;
@@ -774,8 +787,62 @@ input[type="search"]::-webkit-search-decoration {
     padding-bottom: 18px;
   }
 
+  .hero-panel__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(56, 21, 43, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .hero-panel__toggle-icon {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-1px);
+    transition: transform 0.24s ease;
+  }
+
+  .hero-panel__collapsible {
+    overflow: hidden;
+    max-height: 420px;
+    opacity: 1;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.24s ease,
+      margin-bottom 0.24s ease;
+  }
+
   .hero-panel h1 {
     font-size: clamp(1.8rem, 9vw, 2.4rem);
+  }
+
+  .hero-panel.is-collapsed .hero-panel__collapsible {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+  }
+
+  .hero-panel.is-collapsed .hero-panel__toggle-icon {
+    transform: rotate(-135deg) translateY(-1px);
+  }
+
+  .hero-panel.is-collapsed .metric-grid {
+    margin-top: 8px;
   }
 
   .controls-panel,
