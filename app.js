@@ -2,19 +2,16 @@ const APP_CONFIG = window.APP_CONFIG || {};
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
-const STADIA_STYLE_ID = "stamen_toner";
-const STADIA_PRODUCTION_HOST = "ertanoz.github.io";
-const STADIA_PROBE_TILE = { z: 11, x: 1064, y: 685 };
+const DEFAULT_PROTOMAPS_URL = "./tiles/koeln.pmtiles";
+const PROTOMAPS_FLAVOR = "grayscale";
+const PROTOMAPS_LANGUAGE = "de";
 const BASEMAP_MESSAGES = {
-  checking: "Basemap-Pruefung: Stadia Maps Stamen Toner wird verifiziert.",
-  active: "Basemap aktiv: Stadia Maps Stamen Toner.",
-  activeWithKey: "Basemap aktiv: Stadia Maps Stamen Toner ueber API-Key.",
-  needsDomainAuth:
-    "Stadia Maps Stamen Toner braucht Domain-Auth auf diesem Host. OSM in Graustufen ist aktiv.",
-  unavailableFallback:
-    "Stadia Maps Stamen Toner ist derzeit nicht verfuegbar. OSM in Graustufen ist aktiv.",
-  runtimeFallback:
-    "Stadia Maps Stamen Toner ist waehrend der Laufzeit ausgefallen. OSM in Graustufen ist aktiv.",
+  checking: "Basemap-Pruefung: Protomaps PMTiles wird verifiziert.",
+  active: "Basemap aktiv: Protomaps Grayscale fuer Koeln.",
+  missingUrl: "Protomaps PMTiles ist nicht konfiguriert. OSM in Graustufen ist aktiv.",
+  libraryMissing: "Protomaps Leaflet Runtime fehlt. OSM in Graustufen ist aktiv.",
+  unavailableFallback: "Protomaps PMTiles ist derzeit nicht erreichbar. OSM in Graustufen ist aktiv.",
+  runtimeFallback: "Protomaps PMTiles ist waehrend der Laufzeit ausgefallen. OSM in Graustufen ist aktiv.",
 };
 
 const elements = {
@@ -93,34 +90,30 @@ async function setupMap() {
 }
 
 async function createBaseLayer(map) {
-  const stadiaApiKey = String(APP_CONFIG.stadiaMapsApiKey || "").trim();
-  const authorizedHosts = Array.isArray(APP_CONFIG.stadiaAuthorizedHosts)
-    ? APP_CONFIG.stadiaAuthorizedHosts.map((host) => String(host || "").trim().toLowerCase()).filter(Boolean)
-    : [];
-  const currentHost = window.location.hostname.toLowerCase();
-  const shouldAttemptStadia = Boolean(stadiaApiKey) || authorizedHosts.includes(currentHost);
-  const stadiaAttribution =
-    '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> ' +
-    '&copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> ' +
-    '&copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> ' +
-    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+  const protomapsUrl = String(APP_CONFIG.protomapsTilesUrl || DEFAULT_PROTOMAPS_URL).trim();
+  const fallbackEnabled = APP_CONFIG.basemapFallbackEnabled !== false;
+  const protomapsAvailable = typeof window.protomapsL?.leafletLayer === "function";
+  const protomapsAttribution =
+    '&copy; <a href="https://protomaps.com" target="_blank">Protomaps</a> ' +
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
-  const stadiaLayer = L.tileLayer(buildStadiaTileUrl(stadiaApiKey), {
-    maxZoom: 20,
-    attribution: stadiaAttribution,
-  });
   const fallbackLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     className: "basemap-grayscale",
     attribution: osmAttribution,
   });
+  let protomapsLayer = null;
 
   let activeLayer = null;
   let fallbackActivated = false;
-  elements.basemapNote.textContent = shouldAttemptStadia
-    ? BASEMAP_MESSAGES.checking
-    : getHostNotAuthorizedMessage(currentHost);
+  elements.basemapNote.textContent = BASEMAP_MESSAGES.checking;
+
+  const setBasemapMode = (mode) => {
+    const container = map.getContainer();
+    container.classList.toggle("map-has-protomaps", mode === "protomaps");
+    container.classList.toggle("map-has-fallback", mode === "fallback");
+  };
 
   const activateFallback = (message) => {
     if (fallbackActivated) {
@@ -135,67 +128,76 @@ async function createBaseLayer(map) {
       fallbackLayer.addTo(map);
     }
     activeLayer = fallbackLayer;
+    setBasemapMode("fallback");
     elements.basemapNote.textContent = message;
   };
 
-  const activateStadia = () => {
-    if (!map.hasLayer(stadiaLayer)) {
-      stadiaLayer.addTo(map);
+  const activateProtomaps = () => {
+    if (!protomapsLayer) {
+      protomapsLayer = window.protomapsL.leafletLayer({
+        url: protomapsUrl,
+        attribution: protomapsAttribution,
+        flavor: PROTOMAPS_FLAVOR,
+        lang: PROTOMAPS_LANGUAGE,
+        maxZoom: 20,
+        noWrap: true,
+        bounds: DATA_PAYLOAD?.bounds,
+      });
+
+      protomapsLayer.on("tileerror", () => {
+        activateFallback(BASEMAP_MESSAGES.runtimeFallback);
+      });
     }
-    activeLayer = stadiaLayer;
-    elements.basemapNote.textContent = stadiaApiKey
-      ? BASEMAP_MESSAGES.activeWithKey
-      : BASEMAP_MESSAGES.active;
+
+    if (!map.hasLayer(protomapsLayer)) {
+      protomapsLayer.addTo(map);
+    }
+    activeLayer = protomapsLayer;
+    setBasemapMode("protomaps");
+    elements.basemapNote.textContent = BASEMAP_MESSAGES.active;
   };
 
-  stadiaLayer.on("tileerror", () => {
-    activateFallback(BASEMAP_MESSAGES.runtimeFallback);
-  });
-
-  if (!shouldAttemptStadia) {
-    activateFallback(getHostNotAuthorizedMessage(currentHost));
+  if (!protomapsUrl) {
+    activateFallback(BASEMAP_MESSAGES.missingUrl);
     return;
   }
 
-  const probeResult = await probeStadiaAvailability(stadiaApiKey);
+  if (!protomapsAvailable) {
+    activateFallback(BASEMAP_MESSAGES.libraryMissing);
+    return;
+  }
+
+  const probeResult = await probePmtilesAvailability(protomapsUrl);
   if (probeResult.ok) {
-    activateStadia();
+    activateProtomaps();
     return;
   }
 
-  if (probeResult.reason === "auth" && !stadiaApiKey) {
-    activateFallback(BASEMAP_MESSAGES.needsDomainAuth);
+  if (!fallbackEnabled) {
+    elements.basemapNote.textContent = BASEMAP_MESSAGES.unavailableFallback;
     return;
   }
 
   activateFallback(BASEMAP_MESSAGES.unavailableFallback);
 }
 
-async function probeStadiaAvailability(stadiaApiKey) {
+async function probePmtilesAvailability(protomapsUrl) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 5000);
-  const probeUrl = buildStadiaTileUrl(
-    stadiaApiKey,
-    STADIA_PROBE_TILE.z,
-    STADIA_PROBE_TILE.x,
-    STADIA_PROBE_TILE.y,
-    ""
-  );
 
   try {
-    const response = await fetch(probeUrl, {
-      method: "HEAD",
+    const response = await fetch(protomapsUrl, {
+      method: "GET",
+      headers: { Range: "bytes=0-511" },
       mode: "cors",
       cache: "no-store",
       signal: controller.signal,
     });
 
+    await response.arrayBuffer();
+
     if (response.ok) {
       return { ok: true, status: response.status };
-    }
-
-    if (response.status === 401 || response.status === 403) {
-      return { ok: false, reason: "auth", status: response.status };
     }
 
     return { ok: false, reason: "http", status: response.status };
@@ -208,20 +210,6 @@ async function probeStadiaAvailability(stadiaApiKey) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-}
-
-function buildStadiaTileUrl(stadiaApiKey, z = "{z}", x = "{x}", y = "{y}", retina = "{r}") {
-  const suffix = retina ? `${retina}.png` : ".png";
-  const baseUrl = `https://tiles.stadiamaps.com/tiles/${STADIA_STYLE_ID}/${z}/${x}/${y}${suffix}`;
-  return stadiaApiKey ? `${baseUrl}?api_key=${encodeURIComponent(stadiaApiKey)}` : baseUrl;
-}
-
-function getHostNotAuthorizedMessage(currentHost) {
-  if (currentHost === STADIA_PRODUCTION_HOST) {
-    return `Stadia Maps Stamen Toner ist fuer ${STADIA_PRODUCTION_HOST} noch nicht freigeschaltet. OSM in Graustufen ist aktiv, bis die Domain-Auth eingerichtet ist.`;
-  }
-
-  return "Stadia Maps Stamen Toner ist auf diesem Host deaktiviert. OSM in Graustufen ist aktiv, bis Domain-Auth fuer diesen Host freigeschaltet ist.";
 }
 
 function bindEvents() {

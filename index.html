@@ -132,13 +132,13 @@
       crossorigin=""
     ></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
     <script src="./data/koeln_kirschbaumkataster.js"></script>
     <script>
       window.APP_CONFIG = window.APP_CONFIG || {
-        // Optional only if you use a domain-restricted Stadia API key instead of domain auth.
-        stadiaMapsApiKey: "",
-        // Add "ertanoz.github.io" here only after Stadia domain auth is enabled for the live host.
-        stadiaAuthorizedHosts: ["localhost", "127.0.0.1"],
+        // Replace this with your Cloudflare R2 / CDN URL if you move the PMTiles archive off GitHub Pages.
+        protomapsTilesUrl: "./tiles/koeln.pmtiles",
+        basemapFallbackEnabled: true,
       };
     </script>
     <script src="./app.js" defer></script>

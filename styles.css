@@ -306,6 +306,10 @@ body::before {
   font: inherit;
 }
 
+#map.map-has-protomaps .leaflet-pane canvas.leaflet-tile {
+  filter: grayscale(1) contrast(1.16) brightness(1.06) saturate(0.72);
+}
+
 .leaflet-tile.basemap-grayscale {
   filter: grayscale(1) brightness(1.05) contrast(0.92) saturate(0.7);
 }
