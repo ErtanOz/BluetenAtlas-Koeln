@@ -485,6 +485,43 @@ input[type="search"]::-webkit-search-decoration {
   filter: grayscale(1) saturate(0.08) contrast(0.88) brightness(1.08);
 }
 
+.leaflet-top.leaflet-right .leaflet-control {
+  margin-top: 24px;
+  margin-right: 24px;
+}
+
+.leaflet-control-layers {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 20px;
+  background: rgba(255, 250, 252, 0.82);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.leaflet-control-layers-toggle {
+  width: 42px;
+  height: 42px;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 14px 16px;
+  min-width: 168px;
+}
+
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.leaflet-control-layers-selector {
+  accent-color: var(--rose-3);
+}
+
 .leaflet-control-zoom {
   border: 0;
   box-shadow: var(--shadow);
@@ -761,6 +798,11 @@ input[type="search"]::-webkit-search-decoration {
     top: 16px;
     bottom: auto;
     max-width: calc(100vw - 32px);
+  }
+
+  .leaflet-top.leaflet-right .leaflet-control {
+    margin-top: 76px;
+    margin-right: 16px;
   }
 }
 

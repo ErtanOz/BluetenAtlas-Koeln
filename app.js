@@ -1,7 +1,11 @@
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
-const BASEMAP_MESSAGE = "Basemap aktiv: OSM in Graustufen.";
+const BASEMAP_LABELS = {
+  gray: "Grau",
+  street: "OSM Straße",
+  satellite: "Satellit",
+};
 
 const elements = {
   totalTrees: document.getElementById("totalTrees"),
@@ -24,6 +28,9 @@ const appState = {
   allBounds: null,
   map: null,
   clusterLayer: null,
+  basemapLayers: {},
+  activeBasemapKey: "gray",
+  basemapControl: null,
 };
 
 const blossomMarkerIcon = L.divIcon({
@@ -97,13 +104,65 @@ async function setupMap() {
 function createBaseLayer(map) {
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
-  const baseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    className: "basemap-grayscale",
-    attribution: osmAttribution,
+  const esriAttribution =
+    "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
+
+  appState.basemapLayers = {
+    gray: {
+      label: BASEMAP_LABELS.gray,
+      layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        className: "basemap-grayscale",
+        attribution: osmAttribution,
+      }),
+    },
+    street: {
+      label: BASEMAP_LABELS.street,
+      layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: osmAttribution,
+      }),
+    },
+    satellite: {
+      label: BASEMAP_LABELS.satellite,
+      layer: L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: esriAttribution,
+        }
+      ),
+    },
+  };
+
+  const layerControlMap = {};
+  Object.values(appState.basemapLayers).forEach((entry) => {
+    layerControlMap[entry.label] = entry.layer;
   });
-  baseLayer.addTo(map);
-  elements.basemapNote.textContent = BASEMAP_MESSAGE;
+
+  appState.basemapLayers.gray.layer.addTo(map);
+  appState.activeBasemapKey = "gray";
+  appState.basemapControl = L.control.layers(layerControlMap, null, {
+    position: "topright",
+  }).addTo(map);
+
+  map.on("baselayerchange", (event) => {
+    const activeEntry = Object.entries(appState.basemapLayers).find(
+      ([, basemap]) => basemap.layer === event.layer
+    );
+
+    if (activeEntry) {
+      appState.activeBasemapKey = activeEntry[0];
+      updateBasemapNote(activeEntry[0]);
+    }
+  });
+
+  updateBasemapNote(appState.activeBasemapKey);
+}
+
+function updateBasemapNote(key) {
+  const label = BASEMAP_LABELS[key] || BASEMAP_LABELS.gray;
+  elements.basemapNote.textContent = `Basemap aktiv: ${label}.`;
 }
 
 function bindEvents() {
