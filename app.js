@@ -9,6 +9,10 @@ const BASEMAP_LABELS = {
 const MOBILE_LAYOUT_QUERY = window.matchMedia("(max-width: 720px)");
 
 const elements = {
+  mobileSheet: document.getElementById("mobileSheet"),
+  mobileSheetContent: document.getElementById("mobileSheetContent"),
+  mobileSheetHandle: document.getElementById("mobileSheetHandle"),
+  mobileSheetHandleLabel: document.getElementById("mobileSheetHandleLabel"),
   totalTrees: document.getElementById("totalTrees"),
   visibleTrees: document.getElementById("visibleTrees"),
   districtCount: document.getElementById("districtCount"),
@@ -21,10 +25,6 @@ const elements = {
   focusButton: document.getElementById("focusButton"),
   loadingBadge: document.getElementById("loadingBadge"),
   basemapNote: document.getElementById("basemapNote"),
-  heroPanel: document.getElementById("heroPanel"),
-  heroToggle: document.getElementById("heroToggle"),
-  heroToggleLabel: document.getElementById("heroToggleLabel"),
-  heroCollapsible: document.getElementById("heroCollapsible"),
 };
 
 const appState = {
@@ -36,7 +36,7 @@ const appState = {
   basemapLayers: {},
   activeBasemapKey: "gray",
   basemapControl: null,
-  heroExpanded: true,
+  mobileSheetState: "peek",
 };
 
 const blossomMarkerIcon = L.divIcon({
@@ -172,7 +172,7 @@ function updateBasemapNote(key) {
 }
 
 function bindEvents() {
-  bindHeroToggle();
+  bindMobileSheet();
 
   elements.districtSelect.addEventListener("change", () => {
     applyFilters({ refit: true });
@@ -212,43 +212,50 @@ function bindEvents() {
   });
 }
 
-function bindHeroToggle() {
-  syncHeroPanel();
+function bindMobileSheet() {
+  syncMobileSheet();
 
-  elements.heroToggle.addEventListener("click", () => {
+  elements.mobileSheetHandle.addEventListener("click", () => {
     if (!isMobileLayout()) {
       return;
     }
 
-    appState.heroExpanded = !appState.heroExpanded;
-    syncHeroPanel();
+    appState.mobileSheetState = appState.mobileSheetState === "peek" ? "hidden" : "peek";
+    syncMobileSheet();
+    refreshMapLayout();
   });
 
   MOBILE_LAYOUT_QUERY.addEventListener("change", () => {
-    syncHeroPanel();
+    syncMobileSheet();
+    refreshMapLayout();
   });
 }
 
-function syncHeroPanel() {
+function syncMobileSheet() {
   const mobile = isMobileLayout();
-  const expanded = mobile ? appState.heroExpanded : true;
-  const toggleLabel = expanded ? "Text ausblenden" : "Text anzeigen";
+  const expanded = !mobile || appState.mobileSheetState === "peek";
+  const toggleLabel = expanded ? "Nur Karte anzeigen" : "Filter und Informationen anzeigen";
 
-  elements.heroPanel.classList.toggle("is-collapsed", mobile && !expanded);
-  elements.heroPanel.classList.toggle("is-expanded", expanded);
-  elements.heroToggle.setAttribute("aria-expanded", String(expanded));
-  elements.heroToggle.setAttribute("aria-label", toggleLabel);
-  elements.heroToggleLabel.textContent = toggleLabel;
-
-  if (!expanded && mobile) {
-    elements.heroCollapsible.setAttribute("hidden", "");
-  } else {
-    elements.heroCollapsible.removeAttribute("hidden");
-  }
+  elements.mobileSheet.classList.toggle("is-map-only", mobile && !expanded);
+  elements.mobileSheet.classList.toggle("is-peek", mobile && expanded);
+  elements.mobileSheetHandle.setAttribute("aria-expanded", String(expanded));
+  elements.mobileSheetHandle.setAttribute("aria-label", toggleLabel);
+  elements.mobileSheetHandleLabel.textContent = toggleLabel;
+  elements.mobileSheetContent.setAttribute("aria-hidden", String(mobile && !expanded));
 }
 
 function isMobileLayout() {
   return MOBILE_LAYOUT_QUERY.matches;
+}
+
+function refreshMapLayout() {
+  if (!appState.map) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    appState.map.invalidateSize({ pan: false, animate: false });
+  });
 }
 
 function hydrateRecords(payload) {
@@ -381,12 +388,13 @@ function fitToRecords(records) {
 /**
  * Berechnet das Karten-Padding basierend auf dem aktuellen Viewport.
  * Auf Desktop ist das Sidebar-Panel links (420px breit).
- * Auf Mobile ist das Panel unten (58vh hoch) — Padding entsprechend anpassen.
+ * Auf Mobile richtet sich das Padding nach dem Bottom-Sheet-Zustand.
  */
 function getMapPadding() {
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
   if (isMobile) {
-    const panelH = Math.min(window.innerHeight * 0.6, 420);
+    const panelH =
+      appState.mobileSheetState === "hidden" ? 28 : Math.min(window.innerHeight * 0.33, 260);
     return {
       paddingTopLeft: [16, 16],
       paddingBottomRight: [16, panelH],
