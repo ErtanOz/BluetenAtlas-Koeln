@@ -38,16 +38,28 @@
     <div id="map" aria-label="Interaktive Karte von BlütenAtlas Köln"></div>
 
     <main class="ui-shell" id="mobileSheet">
-      <button
-        id="mobileSheetToggle"
-        class="mobile-sheet-toggle"
-        type="button"
-        aria-expanded="true"
-        aria-controls="mobileSheetContent"
-        aria-label="Karte anzeigen"
-      >
-        <span class="mobile-sheet-toggle__label" id="mobileSheetToggleLabel">Karte anzeigen</span>
-      </button>
+      <div class="mobile-floating-actions">
+        <button
+          id="mobileSheetToggle"
+          class="mobile-sheet-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-controls="mobileSheetContent"
+          aria-label="Karte anzeigen"
+        >
+          <span class="mobile-sheet-toggle__label" id="mobileSheetToggleLabel">Karte anzeigen</span>
+        </button>
+        <button
+          id="mobileInfoButton"
+          class="mobile-info-chip"
+          type="button"
+          aria-haspopup="dialog"
+          aria-controls="mobileInfoModal"
+          aria-expanded="false"
+        >
+          Info
+        </button>
+      </div>
 
       <div class="ui-shell__content" id="mobileSheetContent">
         <section class="panel hero-panel">
@@ -149,6 +161,66 @@
         </section>
       </div>
     </main>
+
+    <div id="mobileInfoModal" class="mobile-info-modal" hidden>
+      <button
+        id="mobileInfoBackdrop"
+        class="mobile-info-modal__backdrop"
+        type="button"
+        aria-label="Info schließen"
+      ></button>
+      <section
+        class="mobile-info-modal__card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mobileInfoTitle"
+      >
+        <div class="mobile-info-modal__header">
+          <p class="eyebrow">BlütenAtlas Köln</p>
+          <button
+            id="mobileInfoClose"
+            class="mobile-info-modal__close"
+            type="button"
+            aria-label="Info schließen"
+          >
+            Schließen
+          </button>
+        </div>
+        <h2 id="mobileInfoTitle">Kirschbäume, Viertel für Viertel.</h2>
+        <p class="hero-copy mobile-info-modal__copy">
+          Filtere die Kirschbäume der Stadt, zoome hinein und prüfe die wichtigsten Messwerte
+          direkt im Popup.
+        </p>
+        <p class="detail-line detail-line-muted mobile-info-modal__credit">
+          Powered by
+          <a href="https://digitalheritagelab.com" target="_blank" rel="noreferrer">
+            digitalheritagelab.com
+          </a>
+          / Ertan Özcan
+        </p>
+        <div class="mobile-info-modal__meta">
+          <p class="mobile-info-modal__meta-line">Quelldaten: <code>data/koeln_baumkataster.geojson</code></p>
+          <p class="mobile-info-modal__meta-line">
+            Datenquelle:
+            <a
+              href="https://www.govdata.de/suche/daten/baumkataster-stadt-koln"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GovData / Baumkataster - Stadt Köln
+            </a>
+          </p>
+          <p class="mobile-info-modal__meta-line">
+            Lizenz:
+            <a href="https://www.govdata.de/dl-de/zero-2-0" target="_blank" rel="noreferrer">
+              Datenlizenz Deutschland - Zero - Version 2.0
+            </a>
+            (offene Lizenz)
+          </p>
+          <p class="mobile-info-modal__meta-line" id="mobileInfoBasemapNote">Basemap aktiv: Grau.</p>
+        </div>
+      </section>
+    </div>
 
     <div id="loadingBadge" class="loading-badge is-visible">Karte wird geladen...</div>
 
