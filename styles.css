@@ -476,17 +476,13 @@ input[type="search"]::-webkit-search-decoration {
 
 .leaflet-container {
   background:
-    radial-gradient(circle at 18% 18%, rgba(255, 213, 231, 0.34), transparent 18%),
-    linear-gradient(145deg, #eef4f0, #f7eff4 60%, #f9f3f1);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.34), transparent 24%),
+    linear-gradient(145deg, #f3f4f5 0%, #e4e8eb 48%, #d8dde1 100%);
   font: inherit;
 }
 
-#map.map-has-protomaps .leaflet-pane canvas.leaflet-tile {
-  filter: grayscale(1) contrast(1.16) brightness(1.06) saturate(0.72);
-}
-
 .basemap-grayscale .leaflet-tile {
-  filter: grayscale(1) saturate(0) contrast(0.55) brightness(1.55);
+  filter: grayscale(1) saturate(0.08) contrast(0.88) brightness(1.08);
 }
 
 .leaflet-control-zoom {

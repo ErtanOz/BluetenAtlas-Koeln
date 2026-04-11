@@ -133,7 +133,7 @@
           </a>
           (offene Lizenz)
         </p>
-        <p class="detail-line detail-line-muted" id="basemapNote">Basemap wird geprueft...</p>
+        <p class="detail-line detail-line-muted" id="basemapNote">Basemap aktiv: OSM in Graustufen.</p>
       </section>
     </main>
 
@@ -145,15 +145,7 @@
       crossorigin=""
     ></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
     <script src="./data/koeln_kirschbaumkataster.js" defer></script>
-    <script>
-      window.APP_CONFIG = window.APP_CONFIG || {
-        // Replace this with your Cloudflare R2 / CDN URL if you move the PMTiles archive off GitHub Pages.
-        protomapsTilesUrl: "./tiles/koeln.pmtiles",
-        basemapFallbackEnabled: true,
-      };
-    </script>
     <script src="./app.js" defer></script>
   </body>
 </html>

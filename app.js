@@ -1,18 +1,7 @@
-const APP_CONFIG = window.APP_CONFIG || {};
 const DATA_PAYLOAD = window.KIRSCHBAUM_DATA;
 const NUMBER_FORMAT = new Intl.NumberFormat("de-DE");
 const METRIC_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
-const DEFAULT_PROTOMAPS_URL = "./tiles/koeln.pmtiles";
-const PROTOMAPS_FLAVOR = "grayscale";
-const PROTOMAPS_LANGUAGE = "de";
-const BASEMAP_MESSAGES = {
-  checking: "Basemap-Pruefung: Protomaps PMTiles wird verifiziert.",
-  active: "Basemap aktiv: Protomaps Grayscale fuer Koeln.",
-  missingUrl: "Protomaps PMTiles ist nicht konfiguriert. OSM in Graustufen ist aktiv.",
-  libraryMissing: "Protomaps Leaflet Runtime fehlt. OSM in Graustufen ist aktiv.",
-  unavailableFallback: "Protomaps PMTiles ist derzeit nicht erreichbar. OSM in Graustufen ist aktiv.",
-  runtimeFallback: "Protomaps PMTiles ist waehrend der Laufzeit ausgefallen. OSM in Graustufen ist aktiv.",
-};
+const BASEMAP_MESSAGE = "Basemap aktiv: OSM in Graustufen.";
 
 const elements = {
   totalTrees: document.getElementById("totalTrees"),
@@ -79,7 +68,7 @@ async function setupMap() {
   L.control.zoom({ position: "bottomright" }).addTo(map);
   map.attributionControl.setPrefix(false);
 
-  await createBaseLayer(map);
+  createBaseLayer(map);
 
   const clusterLayer = L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -105,140 +94,16 @@ async function setupMap() {
   appState.clusterLayer = clusterLayer;
 }
 
-async function createBaseLayer(map) {
-  const protomapsUrl = String(APP_CONFIG.protomapsTilesUrl || DEFAULT_PROTOMAPS_URL).trim();
-  const fallbackEnabled = APP_CONFIG.basemapFallbackEnabled !== false;
-  const protomapsAvailable = typeof window.protomapsL?.leafletLayer === "function";
-  const protomapsAttribution =
-    '&copy; <a href="https://protomaps.com" target="_blank">Protomaps</a> ' +
-    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
+function createBaseLayer(map) {
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
-  const fallbackLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  const baseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     className: "basemap-grayscale",
     attribution: osmAttribution,
   });
-  /* Wenn Protomaps aktiv ist, wird OSM als stille Unterebene ohne eigene
-     Attribution hinzugefügt — vermeidet doppelte Attribution im Control. */
-  const fallbackLayerSilent = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    className: "basemap-grayscale",
-    attribution: "",
-  });
-  let protomapsLayer = null;
-
-  let activeLayer = null;
-  let fallbackActivated = false;
-  elements.basemapNote.textContent = BASEMAP_MESSAGES.checking;
-
-  const setBasemapMode = (mode) => {
-    const container = map.getContainer();
-    container.classList.toggle("map-has-protomaps", mode === "protomaps");
-    container.classList.toggle("map-has-fallback", mode === "fallback");
-  };
-
-  const activateFallback = (message) => {
-    if (fallbackActivated) {
-      return;
-    }
-
-    fallbackActivated = true;
-    if (activeLayer && map.hasLayer(activeLayer)) {
-      map.removeLayer(activeLayer);
-    }
-    if (!map.hasLayer(fallbackLayer)) {
-      fallbackLayer.addTo(map);
-    }
-    activeLayer = fallbackLayer;
-    setBasemapMode("fallback");
-    elements.basemapNote.textContent = message;
-  };
-
-  const activateProtomaps = () => {
-    // Always add OSM as silent underlayer so areas outside the Köln
-    // PMTiles bounds still have a basemap (avoids blank regions).
-    // Use the silent variant to avoid doubling the attribution text.
-    if (!map.hasLayer(fallbackLayerSilent)) {
-      fallbackLayerSilent.addTo(map);
-    }
-
-    if (!protomapsLayer) {
-      protomapsLayer = window.protomapsL.leafletLayer({
-        url: protomapsUrl,
-        attribution: protomapsAttribution,
-        flavor: PROTOMAPS_FLAVOR,
-        lang: PROTOMAPS_LANGUAGE,
-        maxZoom: 19, // Leaflet maxZoom ile eşit
-        noWrap: true,
-      });
-
-      protomapsLayer.on("tileerror", () => {
-        activateFallback(BASEMAP_MESSAGES.runtimeFallback);
-      });
-    }
-
-    if (!map.hasLayer(protomapsLayer)) {
-      protomapsLayer.addTo(map);
-    }
-    activeLayer = protomapsLayer;
-    setBasemapMode("protomaps");
-    elements.basemapNote.textContent = BASEMAP_MESSAGES.active;
-  };
-
-  if (!protomapsUrl) {
-    activateFallback(BASEMAP_MESSAGES.missingUrl);
-    return;
-  }
-
-  if (!protomapsAvailable) {
-    activateFallback(BASEMAP_MESSAGES.libraryMissing);
-    return;
-  }
-
-  const probeResult = await probePmtilesAvailability(protomapsUrl);
-  if (probeResult.ok) {
-    activateProtomaps();
-    return;
-  }
-
-  if (!fallbackEnabled) {
-    elements.basemapNote.textContent = BASEMAP_MESSAGES.unavailableFallback;
-    return;
-  }
-
-  activateFallback(BASEMAP_MESSAGES.unavailableFallback);
-}
-
-async function probePmtilesAvailability(protomapsUrl) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const response = await fetch(protomapsUrl, {
-      method: "GET",
-      headers: { Range: "bytes=0-511" },
-      mode: "cors",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-
-    await response.arrayBuffer();
-
-    if (response.ok) {
-      return { ok: true, status: response.status };
-    }
-
-    return { ok: false, reason: "http", status: response.status };
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      return { ok: false, reason: "network", error: "timeout" };
-    }
-
-    return { ok: false, reason: "network", error: String(error) };
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
+  baseLayer.addTo(map);
+  elements.basemapNote.textContent = BASEMAP_MESSAGE;
 }
 
 function bindEvents() {
