@@ -6,8 +6,12 @@
     <title>Bl&uuml;tenAtlas K&ouml;ln</title>
     <meta
       name="description"
-      content="Bl&uuml;tenAtlas K&ouml;ln: Interaktive Karte der Prunus-Baeume in Koeln mit Filtern, Clustern und offener GovData-Quelle."
+      content="Bl&uuml;tenAtlas K&ouml;ln: Interaktive Karte der Prunus-B&auml;ume in K&ouml;ln mit Filtern, Clustern und offener GovData-Quelle."
     />
+    <meta property="og:title" content="BlütenAtlas Köln" />
+    <meta property="og:description" content="Interaktive Kirschbaum-Karte der Stadt Köln — 3.787 Bäume visualisiert." />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#d63878" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -75,24 +79,33 @@
 
         <div class="field-block">
           <label for="searchInput">Suche</label>
-          <input
-            id="searchInput"
-            type="search"
-            placeholder="Strasse, botanischer Name, Baumnummer..."
-            autocomplete="off"
-          />
+          <div class="search-wrapper">
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Straße, Name, Baumnummer …"
+              autocomplete="off"
+            />
+            <button
+              id="searchClear"
+              class="search-clear"
+              type="button"
+              aria-label="Suche leeren"
+              tabindex="-1"
+            >&times;</button>
+          </div>
         </div>
 
         <div class="button-row">
-          <button id="resetButton" class="button button-primary" type="button">Zuruecksetzen</button>
-          <button id="focusButton" class="button button-secondary" type="button">
+          <button id="resetButton" class="button button-secondary" type="button">Zuruecksetzen</button>
+          <button id="focusButton" class="button button-primary" type="button" disabled>
             Treffer fokussieren
           </button>
         </div>
       </section>
 
       <section class="panel info-panel">
-        <div class="status-line">
+        <div class="status-line" aria-live="polite" aria-atomic="true">
           <span class="status-dot"></span>
           <p id="statusText">Daten werden geladen...</p>
         </div>
@@ -133,7 +146,7 @@
     ></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
-    <script src="./data/koeln_kirschbaumkataster.js"></script>
+    <script src="./data/koeln_kirschbaumkataster.js" defer></script>
     <script>
       window.APP_CONFIG = window.APP_CONFIG || {
         // Replace this with your Cloudflare R2 / CDN URL if you move the PMTiles archive off GitHub Pages.

@@ -22,6 +22,7 @@ const elements = {
   focusLabel: document.getElementById("focusLabel"),
   districtSelect: document.getElementById("districtSelect"),
   searchInput: document.getElementById("searchInput"),
+  searchClear: document.getElementById("searchClear"),
   resetButton: document.getElementById("resetButton"),
   focusButton: document.getElementById("focusButton"),
   loadingBadge: document.getElementById("loadingBadge"),
@@ -45,11 +46,12 @@ const blossomMarkerIcon = L.divIcon({
 });
 
 async function bootstrap() {
+  injectGlobalSvgDefs(); /* SVG-Gradienten einmalig im DOM registrieren (verhindert ID-Konflikt) */
   await setupMap();
   bindEvents();
 
   if (!DATA_PAYLOAD || !Array.isArray(DATA_PAYLOAD.records)) {
-    showError("Daten-Asset nicht gefunden. Fuehre zuerst das Extractor-Skript aus.");
+    showError("Daten-Asset nicht gefunden. Führe zuerst das Extractor-Skript aus.");
     return;
   }
 
@@ -69,6 +71,9 @@ async function setupMap() {
     preferCanvas: true,
     zoomControl: false,
     minZoom: 11,
+    maxZoom: 19, // Aşırı yakınlaşıldığında haritanın kaybolmasını engeller
+    // Animasyonu daha geniş zoom aralığında bile çalıştır
+    zoomAnimationThreshold: 4,
   });
 
   L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -81,9 +86,20 @@ async function setupMap() {
     spiderfyOnMaxZoom: true,
     maxClusterRadius: 48,
     iconCreateFunction: createClusterIcon,
+    // Cluster üzerine çift tıklama ile zoom yap
+    zoomToBoundsOnClick: true,
+  });
+
+  // Cluster'lar üzerindeki çift-tıklamayı haritaya ilet (zoom’u açık bırak)
+  clusterLayer.on("clusterclick", function (e) {
+    // Tek tıklamada cluster zoom’u zaten çalışıyor (zoomToBoundsOnClick).
+    // Burada sadece event'in haritaya ulaşmasını engellememek yeterli.
   });
 
   map.addLayer(clusterLayer);
+
+  // Stable Leaflet container recalculation after two render frames
+  requestAnimationFrame(() => requestAnimationFrame(() => map.invalidateSize()));
 
   appState.map = map;
   appState.clusterLayer = clusterLayer;
@@ -102,6 +118,13 @@ async function createBaseLayer(map) {
     maxZoom: 19,
     className: "basemap-grayscale",
     attribution: osmAttribution,
+  });
+  /* Wenn Protomaps aktiv ist, wird OSM als stille Unterebene ohne eigene
+     Attribution hinzugefügt — vermeidet doppelte Attribution im Control. */
+  const fallbackLayerSilent = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    className: "basemap-grayscale",
+    attribution: "",
   });
   let protomapsLayer = null;
 
@@ -133,15 +156,21 @@ async function createBaseLayer(map) {
   };
 
   const activateProtomaps = () => {
+    // Always add OSM as silent underlayer so areas outside the Köln
+    // PMTiles bounds still have a basemap (avoids blank regions).
+    // Use the silent variant to avoid doubling the attribution text.
+    if (!map.hasLayer(fallbackLayerSilent)) {
+      fallbackLayerSilent.addTo(map);
+    }
+
     if (!protomapsLayer) {
       protomapsLayer = window.protomapsL.leafletLayer({
         url: protomapsUrl,
         attribution: protomapsAttribution,
         flavor: PROTOMAPS_FLAVOR,
         lang: PROTOMAPS_LANGUAGE,
-        maxZoom: 20,
+        maxZoom: 19, // Leaflet maxZoom ile eşit
         noWrap: true,
-        bounds: DATA_PAYLOAD?.bounds,
       });
 
       protomapsLayer.on("tileerror", () => {
@@ -217,18 +246,37 @@ function bindEvents() {
     applyFilters({ refit: true });
   });
 
+  const debouncedSearch = debounce(() => applyFilters({ refit: false }), 280);
+
   elements.searchInput.addEventListener("input", () => {
+    updateSearchClear();
+    debouncedSearch();
+  });
+
+  elements.searchClear.addEventListener("click", () => {
+    elements.searchInput.value = "";
+    updateSearchClear();
     applyFilters({ refit: false });
+    elements.searchInput.focus();
   });
 
   elements.resetButton.addEventListener("click", () => {
     elements.districtSelect.value = "";
     elements.searchInput.value = "";
+    updateSearchClear();
     applyFilters({ refit: true });
   });
 
   elements.focusButton.addEventListener("click", () => {
     fitToRecords(appState.filteredRecords.length ? appState.filteredRecords : appState.allRecords);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && elements.searchInput.value) {
+      elements.searchInput.value = "";
+      updateSearchClear();
+      applyFilters({ refit: false });
+    }
   });
 }
 
@@ -255,10 +303,18 @@ function hydrateRecords(payload) {
       maxWidth: 320,
     });
 
+    // Çift tıklamayı (dblclick) haritaya ilet: Leaflet marker'ları bu olayı
+    // varsayılan olarak tüketir (stopPropagation) — bu sayede
+    // marker üzerinde çift tıklayınca da harita zoom yapılabilir.
+    enriched.marker.on("dblclick", function (e) {
+      appState.map.zoomIn(1, { animate: true });
+      L.DomEvent.stop(e); // popup açılmasını önle, sadece zoom
+    });
+
     return enriched;
   });
 
-  elements.totalTrees.textContent = NUMBER_FORMAT.format(appState.allRecords.length);
+  animateCounter(elements.totalTrees, appState.allRecords.length);
 }
 
 function populateDistricts(districts) {
@@ -272,7 +328,7 @@ function populateDistricts(districts) {
   });
 
   elements.districtSelect.appendChild(fragment);
-  elements.districtCount.textContent = NUMBER_FORMAT.format(districts.length);
+  animateCounter(elements.districtCount, districts.length);
 }
 
 function applyFilters({ refit }) {
@@ -309,9 +365,10 @@ function updateDashboard(records, selectedDistrict, rawQuery) {
   const districtSet = new Set(records.map((record) => record.district).filter(Boolean));
   const focusLabel = selectedDistrict || (rawQuery ? "Suchergebnis" : "Ganz Koeln");
 
-  elements.visibleTrees.textContent = NUMBER_FORMAT.format(records.length);
-  elements.districtCount.textContent = NUMBER_FORMAT.format(districtSet.size || DATA_PAYLOAD.districts.length);
+  animateCounter(elements.visibleTrees, records.length);
+  animateCounter(elements.districtCount, districtSet.size || DATA_PAYLOAD.districts.length);
   elements.focusLabel.textContent = focusLabel;
+  elements.focusButton.disabled = records.length === 0;
 
   if (!records.length) {
     elements.statusText.textContent = "Keine passenden Kirschbaeume gefunden. Erweitere die Filter.";
@@ -331,16 +388,43 @@ function updateDashboard(records, selectedDistrict, rawQuery) {
 }
 
 function fitToRecords(records) {
-  if (!records.length && appState.allBounds) {
-    appState.map.fitBounds(appState.allBounds.pad(0.05));
+  if (!records.length) {
+    if (appState.allBounds) {
+      appState.map.fitBounds(appState.allBounds.pad(0.05), {
+        ...getMapPadding(),
+        animate: true,
+        duration: 0.8,
+      });
+    }
     return;
   }
 
   const bounds = L.latLngBounds(records.map((record) => [record.lat, record.lon]));
   appState.map.fitBounds(bounds.pad(0.12), {
+    ...getMapPadding(),
     animate: true,
     duration: 0.8,
   });
+}
+
+/**
+ * Berechnet das Karten-Padding basierend auf dem aktuellen Viewport.
+ * Auf Desktop ist das Sidebar-Panel links (420px breit).
+ * Auf Mobile ist das Panel unten (58vh hoch) — Padding entsprechend anpassen.
+ */
+function getMapPadding() {
+  const isMobile = window.matchMedia("(max-width: 720px)").matches;
+  if (isMobile) {
+    const panelH = Math.min(window.innerHeight * 0.6, 420);
+    return {
+      paddingTopLeft: [16, 16],
+      paddingBottomRight: [16, panelH],
+    };
+  }
+  return {
+    paddingTopLeft: [430, 24],
+    paddingBottomRight: [24, 24],
+  };
 }
 
 function createClusterIcon(cluster) {
@@ -352,7 +436,7 @@ function createClusterIcon(cluster) {
     iconSize: [size, size],
     html: `
       <div class="cluster-shell" style="width:${size}px;height:${size}px">
-        ${createBlossomSvg("")}
+        ${createBlossomSvg("", "-c")}
         <span class="cluster-count">${NUMBER_FORMAT.format(count)}</span>
       </div>
     `,
@@ -410,6 +494,43 @@ function buildSearchIndex(record) {
     .toLocaleLowerCase();
 }
 
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function animateCounter(element, toValue, duration = 520) {
+  const raw = element.textContent.replace(/[\s.]/g, "");
+  const fromParsed = parseInt(raw, 10);
+  /* Beim ersten Load ist textContent "-" → NaN → von 0 starten für Animation */
+  const from = isNaN(fromParsed) ? 0 : fromParsed;
+  if (from === toValue) {
+    element.textContent = NUMBER_FORMAT.format(toValue);
+    return;
+  }
+  const start = performance.now();
+  element.style.animation = "none";
+  void element.offsetHeight; // force reflow
+  element.style.animation = "metric-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)";
+  const step = (now) => {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(from + (toValue - from) * eased);
+    element.textContent = NUMBER_FORMAT.format(current);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function updateSearchClear() {
+  const hasValue = elements.searchInput.value.length > 0;
+  elements.searchClear.classList.toggle("is-visible", hasValue);
+}
+
 function setLoading(isLoading) {
   elements.loadingBadge.classList.toggle("is-visible", isLoading);
 }
@@ -430,27 +551,18 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function createBlossomSvg(className) {
+function createBlossomSvg(className, idSuffix = "") {
+  /* Referenziert globale SVG-Defs (via injectGlobalSvgDefs) — kein
+     ID-Konflikt mehr, wenn tausende Marker im DOM sind. */
   return `
     <svg class="${className}" viewBox="0 0 72 72" aria-hidden="true" focusable="false">
-      <defs>
-        <radialGradient id="petalFill" cx="50%" cy="38%" r="68%">
-          <stop offset="0%" stop-color="#fff8fb"></stop>
-          <stop offset="62%" stop-color="#ffc8de"></stop>
-          <stop offset="100%" stop-color="#eb6d9f"></stop>
-        </radialGradient>
-        <radialGradient id="centerFill" cx="50%" cy="50%" r="70%">
-          <stop offset="0%" stop-color="#fff5cf"></stop>
-          <stop offset="100%" stop-color="#f0bb41"></stop>
-        </radialGradient>
-      </defs>
       <g transform="translate(36 36)">
-        <ellipse rx="12" ry="19" transform="rotate(0) translate(0 -15)" fill="url(#petalFill)"></ellipse>
-        <ellipse rx="12" ry="19" transform="rotate(72) translate(0 -15)" fill="url(#petalFill)"></ellipse>
-        <ellipse rx="12" ry="19" transform="rotate(144) translate(0 -15)" fill="url(#petalFill)"></ellipse>
-        <ellipse rx="12" ry="19" transform="rotate(216) translate(0 -15)" fill="url(#petalFill)"></ellipse>
-        <ellipse rx="12" ry="19" transform="rotate(288) translate(0 -15)" fill="url(#petalFill)"></ellipse>
-        <circle r="11" fill="url(#centerFill)"></circle>
+        <ellipse rx="12" ry="19" transform="rotate(0) translate(0 -15)" fill="url(#gPetalFill)"></ellipse>
+        <ellipse rx="12" ry="19" transform="rotate(72) translate(0 -15)" fill="url(#gPetalFill)"></ellipse>
+        <ellipse rx="12" ry="19" transform="rotate(144) translate(0 -15)" fill="url(#gPetalFill)"></ellipse>
+        <ellipse rx="12" ry="19" transform="rotate(216) translate(0 -15)" fill="url(#gPetalFill)"></ellipse>
+        <ellipse rx="12" ry="19" transform="rotate(288) translate(0 -15)" fill="url(#gPetalFill)"></ellipse>
+        <circle r="11" fill="url(#gCenterFill)"></circle>
         <circle r="2.3" cx="-4.5" cy="-1.8" fill="#8e5d0f"></circle>
         <circle r="2.3" cx="0" cy="3.2" fill="#8e5d0f"></circle>
         <circle r="2.3" cx="4.8" cy="-1.4" fill="#8e5d0f"></circle>
@@ -462,4 +574,30 @@ function createBlossomSvg(className) {
       </g>
     </svg>
   `;
+}
+
+/**
+ * Injiziert einmalig globale SVG-Gradienten-Definitionen in den DOM-Body.
+ * Dadurch können alle Marker und Cluster-Icons dieselben Gradient-IDs
+ * verwenden, ohne Browser-Konflikte durch doppelte IDs im DOM.
+ */
+function injectGlobalSvgDefs() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none";
+  svg.innerHTML = `
+    <defs>
+      <radialGradient id="gPetalFill" cx="50%" cy="38%" r="68%">
+        <stop offset="0%" stop-color="#fff8fb"/>
+        <stop offset="62%" stop-color="#ffc8de"/>
+        <stop offset="100%" stop-color="#eb6d9f"/>
+      </radialGradient>
+      <radialGradient id="gCenterFill" cx="50%" cy="50%" r="70%">
+        <stop offset="0%" stop-color="#fff5cf"/>
+        <stop offset="100%" stop-color="#f0bb41"/>
+      </radialGradient>
+    </defs>
+  `;
+  document.body.prepend(svg);
 }
