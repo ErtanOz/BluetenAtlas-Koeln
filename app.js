@@ -11,8 +11,8 @@ const MOBILE_LAYOUT_QUERY = window.matchMedia("(max-width: 720px)");
 const elements = {
   mobileSheet: document.getElementById("mobileSheet"),
   mobileSheetContent: document.getElementById("mobileSheetContent"),
-  mobileSheetHandle: document.getElementById("mobileSheetHandle"),
-  mobileSheetHandleLabel: document.getElementById("mobileSheetHandleLabel"),
+  mobileSheetToggle: document.getElementById("mobileSheetToggle"),
+  mobileSheetToggleLabel: document.getElementById("mobileSheetToggleLabel"),
   totalTrees: document.getElementById("totalTrees"),
   visibleTrees: document.getElementById("visibleTrees"),
   districtCount: document.getElementById("districtCount"),
@@ -36,7 +36,7 @@ const appState = {
   basemapLayers: {},
   activeBasemapKey: "gray",
   basemapControl: null,
-  mobileSheetState: "peek",
+  mobileSheetState: "open",
 };
 
 const blossomMarkerIcon = L.divIcon({
@@ -215,12 +215,12 @@ function bindEvents() {
 function bindMobileSheet() {
   syncMobileSheet();
 
-  elements.mobileSheetHandle.addEventListener("click", () => {
+  elements.mobileSheetToggle.addEventListener("click", () => {
     if (!isMobileLayout()) {
       return;
     }
 
-    appState.mobileSheetState = appState.mobileSheetState === "peek" ? "hidden" : "peek";
+    appState.mobileSheetState = appState.mobileSheetState === "open" ? "hidden" : "open";
     syncMobileSheet();
     refreshMapLayout();
   });
@@ -233,14 +233,14 @@ function bindMobileSheet() {
 
 function syncMobileSheet() {
   const mobile = isMobileLayout();
-  const expanded = !mobile || appState.mobileSheetState === "peek";
-  const toggleLabel = expanded ? "Nur Karte anzeigen" : "Filter und Informationen anzeigen";
+  const expanded = !mobile || appState.mobileSheetState === "open";
+  const toggleLabel = expanded ? "Karte anzeigen" : "Filter anzeigen";
 
-  elements.mobileSheet.classList.toggle("is-map-only", mobile && !expanded);
-  elements.mobileSheet.classList.toggle("is-peek", mobile && expanded);
-  elements.mobileSheetHandle.setAttribute("aria-expanded", String(expanded));
-  elements.mobileSheetHandle.setAttribute("aria-label", toggleLabel);
-  elements.mobileSheetHandleLabel.textContent = toggleLabel;
+  elements.mobileSheet.classList.toggle("is-hidden", mobile && !expanded);
+  elements.mobileSheet.classList.toggle("is-open", mobile && expanded);
+  elements.mobileSheetToggle.setAttribute("aria-expanded", String(expanded));
+  elements.mobileSheetToggle.setAttribute("aria-label", toggleLabel);
+  elements.mobileSheetToggleLabel.textContent = toggleLabel;
   elements.mobileSheetContent.setAttribute("aria-hidden", String(mobile && !expanded));
 }
 
@@ -394,7 +394,9 @@ function getMapPadding() {
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
   if (isMobile) {
     const panelH =
-      appState.mobileSheetState === "hidden" ? 28 : Math.min(window.innerHeight * 0.33, 260);
+      appState.mobileSheetState === "hidden"
+        ? 84
+        : Math.min(window.innerHeight * 0.34, 320) + 68;
     return {
       paddingTopLeft: [16, 16],
       paddingBottomRight: [16, panelH],
